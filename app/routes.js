@@ -1,10 +1,13 @@
-import {flatRoutes} from '@react-router/fs-routes';
 import {hydrogenRoutes} from '@shopify/hydrogen';
+import {index, route} from '@react-router/dev/routes';
 
+// This site is a single-purpose management app — no storefront.
+// Only the ledger (at "/") and a catch-all 404 are registered. The
+// storefront route files from the template remain on disk but are
+// intentionally not wired up, so they're never built or reachable.
 export default hydrogenRoutes([
-  ...(await flatRoutes()),
-  // Manual route definitions can be added to this array, in addition to or instead of using the `flatRoutes` file-based routing convention.
-  // See https://reactrouter.com/api/framework-conventions/routes.ts#routests
+  index('routes/_index.jsx'),
+  route('*', 'routes/$.jsx'),
 ]);
 
 /** @typedef {import('@react-router/dev/routes').RouteConfig} RouteConfig */

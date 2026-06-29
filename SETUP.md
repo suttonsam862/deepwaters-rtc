@@ -2,7 +2,7 @@
 
 A private session/payment tracker for Jesse Vasquez (Deep Waters RTC), built as a
 Shopify **Hydrogen** app (React Router v7 + Vite) that hosts free on **Oxygen**, with
-data stored in **Supabase** (Postgres). The app lives at the **`/tracker`** route.
+data stored in **Supabase** (Postgres). The app lives at the site root (`/`).
 
 ```
 Browser (phone/desktop)
@@ -31,8 +31,8 @@ Supabase Postgres + Row Level Security  ──(the data; survives any device wip
    Leave "Confirm email" on. (This powers the magic-link login.)
 4. **Authentication → URL Configuration**: add your site URLs to **Redirect URLs** so
    the magic link can return to the app. Add both:
-   - `http://localhost:3000/tracker` (local dev)
-   - `https://YOUR-OXYGEN-URL/tracker` (added after step 3 below)
+   - `http://localhost:3000/` (local dev)
+   - `https://YOUR-OXYGEN-URL/` (added after step 3 below)
 5. **Project Settings → API**: copy the **Project URL** and the **anon public** key.
    You'll paste these into env vars below. (The anon key is meant to be public — RLS is
    what keeps data private.)
@@ -45,7 +45,7 @@ cp .env.example .env      # then paste your Supabase URL + anon key into .env
 npm run dev
 ```
 
-Open the printed URL and add `/tracker`. Sign in with your email, click the magic link,
+Open the printed URL and add the site root URL `/`. Sign in with your email, click the magic link,
 and you're in. Use **Load sample data** on the empty dashboard to explore.
 
 ## 3. Put it on GitHub + deploy to Oxygen (free, ~10 min)
@@ -69,9 +69,9 @@ Oxygen is Shopify's free edge hosting; it auto-deploys every time you push to Gi
    - `SESSION_SECRET` = any long random string
    Redeploy (push any commit, or use the redeploy button).
 4. Go back to Supabase → **Authentication → URL Configuration** and add
-   `https://YOUR-OXYGEN-URL/tracker` to the Redirect URLs.
+   `https://YOUR-OXYGEN-URL/` to the Redirect URLs.
 
-Send Jesse: **`https://YOUR-OXYGEN-URL/tracker`**. He logs in with his email — done.
+Send Jesse: **`https://YOUR-OXYGEN-URL/`**. He logs in with his email — done.
 
 ### Optional: link the real store / custom domain
 - To show real Deep Waters data on the storefront routes (not needed for the tracker):
@@ -86,12 +86,12 @@ Send Jesse: **`https://YOUR-OXYGEN-URL/tracker`**. He logs in with his email —
 - Every delete asks for confirmation, and there is no "delete everything" button.
 
 ## How it's wired (for future you)
-- `app/routes/tracker.jsx` — the route; server loader passes the public Supabase env to
+- `app/routes/.jsx` — the route; server loader passes the public Supabase env to
   the client, then mounts the app.
-- `app/lib/tracker-app.js` — the whole UI + Supabase CRUD, scoped under `.dwroot` so it
+- `app/lib/-app.js` — the whole UI + Supabase CRUD, scoped under `.dwroot` so it
   never touches the storefront theme.
 - `supabase/schema.sql` — tables + RLS policies.
-- `app/root.jsx` — patched to render `/tracker` without storefront header/footer.
+- `app/root.jsx` — patched to render `/` without storefront header/footer.
 
 To add a coach later: each Supabase user automatically gets their own private data via
 RLS — just have them sign in with a different email. (No code change needed.)
