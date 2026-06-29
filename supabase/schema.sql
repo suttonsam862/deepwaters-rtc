@@ -56,23 +56,24 @@ create index sa_session_idx            on public.session_athletes(session_id);
 create index sa_athlete_idx            on public.session_athletes(athlete_id);
 
 -- ============================================================
--- Row Level Security — each user only ever sees their own rows
+-- Row Level Security — any signed-in staff member can read/write everything
 -- ============================================================
 alter table public.athletes         enable row level security;
 alter table public.sessions         enable row level security;
 alter table public.session_athletes enable row level security;
 
-create policy "athletes are private to owner"
-  on public.athletes for all
-  using (owner = auth.uid())
-  with check (owner = auth.uid());
+-- Shared team access: ANY signed-in user can read & write ALL rows.
+-- This is a unified tracker for the whole staff (no sensitive data).
+-- The "owner" column still records who created each row, but does not
+-- restrict access.
+create policy "shared athletes access"
+  on public.athletes for all to authenticated
+  using (true) with check (true);
 
-create policy "sessions are private to owner"
-  on public.sessions for all
-  using (owner = auth.uid())
-  with check (owner = auth.uid());
+create policy "shared sessions access"
+  on public.sessions for all to authenticated
+  using (true) with check (true);
 
-create policy "links are private to owner"
-  on public.session_athletes for all
-  using (owner = auth.uid())
-  with check (owner = auth.uid());
+create policy "shared links access"
+  on public.session_athletes for all to authenticated
+  using (true) with check (true);

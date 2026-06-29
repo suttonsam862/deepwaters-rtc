@@ -420,24 +420,46 @@ export function mount(root,{SUPABASE_URL,SUPABASE_ANON_KEY}){
     });
   }
 
-  /* ---------- auth ---------- */
+  /* ---------- auth (Google + email/password, shared team access) ---------- */
+  function gIcon(){return '<svg viewBox="0 0 18 18" width="17" height="17" style="margin-right:2px"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z"/><path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z"/></svg>';}
+  function loginMsg(html){const el=q('#lmsg');if(el)el.innerHTML=html||'';}
   function loginCard(extra=''){return `
     <div class="lcard">
       <div class="logo big">${ic('wave')}</div>
       <div class="ltitle">Deep Waters RTC</div>
       <div class="lsub">Coaching Ledger</div>
-      <form id="lform"><input type="email" id="lemail" placeholder="you@email.com" autocomplete="email" required>
-      <button class="btn" type="submit" id="lbtn" style="width:100%;justify-content:center">Send magic link</button></form>
-      <div class="lnote">Enter your email and we'll send a one-tap sign-in link. No password needed.</div>
-      ${extra}
+      <button class="btn gbtn" id="gbtn" type="button">${gIcon()}Continue with Google</button>
+      <div class="ldiv"><span>or</span></div>
+      <form id="lform">
+        <input type="email" id="lemail" placeholder="you@email.com" autocomplete="email" required>
+        <input type="password" id="lpass" placeholder="Password (6+ characters)" autocomplete="current-password" required minlength="6">
+        <button class="btn" type="submit" id="lbtn" style="width:100%;justify-content:center"><span id="lbtntx">Sign in</span></button>
+      </form>
+      <div class="ltoggle">New to the team? <button type="button" id="ltgl">Create an account</button></div>
+      <div class="lmsg" id="lmsg">${extra}</div>
+      <div class="lnote">Everyone on staff shares the same athletes &amp; sessions — sign in with any account.</div>
     </div>`;}
-  function showLogin(){root.classList.remove('authed');q('#login').innerHTML=loginCard();
-    const f=q('#lform');f.onsubmit=async e=>{e.preventDefault();const email=q('#lemail').value.trim();if(!email)return;const btn=q('#lbtn');btn.textContent='Sending…';btn.disabled=true;
-      const{error}=await sb.auth.signInWithOtp({email,options:{emailRedirectTo:window.location.origin+window.location.pathname}});
-      if(error){q('#login').innerHTML=loginCard('<div class="lerr">'+escapeHtml(error.message)+'</div>');showLoginRebind();}
-      else q('#login').innerHTML=loginCard('<div class="lok">✓ Check your email — tap the link to sign in.</div>');
-    };}
-  function showLoginRebind(){const f=q('#lform');if(f)showLogin();}
+  function showLogin(){root.classList.remove('authed');q('#login').innerHTML=loginCard();bindLogin();}
+  function bindLogin(){
+    let mode='signin';
+    const setMode=m=>{mode=m;q('#lbtntx').textContent=m==='signin'?'Sign in':'Create account';
+      q('#ltgl').textContent=m==='signin'?'Create an account':'Have an account? Sign in';
+      q('#lpass').setAttribute('autocomplete',m==='signin'?'current-password':'new-password');loginMsg('');};
+    q('#ltgl').onclick=()=>setMode(mode==='signin'?'signup':'signin');
+    q('#gbtn').onclick=async()=>{loginMsg('<div class="lok">Redirecting to Google…</div>');
+      const{error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:window.location.origin+'/'}});
+      if(error)loginMsg('<div class="lerr">'+escapeHtml(error.message)+'</div>');};
+    q('#lform').onsubmit=async e=>{e.preventDefault();
+      const email=q('#lemail').value.trim(),pass=q('#lpass').value;if(!email||!pass)return;
+      const btn=q('#lbtn');btn.disabled=true;loginMsg('');
+      let res;
+      if(mode==='signup')res=await sb.auth.signUp({email,password:pass,options:{emailRedirectTo:window.location.origin+'/'}});
+      else res=await sb.auth.signInWithPassword({email,password:pass});
+      btn.disabled=false;
+      if(res.error){loginMsg('<div class="lerr">'+escapeHtml(res.error.message)+'</div>');}
+      else if(mode==='signup'&&!res.data.session){loginMsg('<div class="lok">✓ Account created. If email confirmation is on, check your inbox, then sign in.</div>');}
+    };
+  }
   function showApp(){root.classList.add('authed');
     qa('#nav button,#mnav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
     q('#fab').onclick=()=>{cur==='athletes'?clientModal():sessionModal()};
@@ -679,9 +701,16 @@ const CSS=`
 .dwroot .lcard .logo.big svg{width:36px;height:36px}
 .dwroot .ltitle{font-size:22px;font-weight:800;letter-spacing:-.3px}
 .dwroot .lsub{font-size:11px;color:var(--faint);letter-spacing:2px;text-transform:uppercase;margin-top:5px;margin-bottom:26px}
-.dwroot #lform{display:flex;flex-direction:column;gap:12px}
-.dwroot #lemail{background:rgba(8,13,24,.7);border:1px solid var(--stroke);border-radius:13px;color:var(--text);padding:14px 15px;font-size:15px;font-family:inherit;text-align:center}
-.dwroot #lemail:focus{outline:0;border-color:rgba(84,182,255,.5);box-shadow:0 0 0 3px rgba(84,182,255,.12)}
+.dwroot #lform{display:flex;flex-direction:column;gap:10px}
+.dwroot #lform input{background:rgba(8,13,24,.7);border:1px solid var(--stroke);border-radius:13px;color:var(--text);padding:14px 15px;font-size:15px;font-family:inherit;text-align:center}
+.dwroot #lform input:focus{outline:0;border-color:rgba(84,182,255,.5);box-shadow:0 0 0 3px rgba(84,182,255,.12)}
+.dwroot .gbtn{background:#fff;color:#1a1a1a;width:100%;justify-content:center;box-shadow:none;margin-bottom:2px}
+.dwroot .gbtn:hover{filter:brightness(.96)}
+.dwroot .ldiv{display:flex;align-items:center;gap:12px;color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:14px 0 12px}
+.dwroot .ldiv::before,.dwroot .ldiv::after{content:"";flex:1;height:1px;background:var(--stroke)}
+.dwroot .ltoggle{font-size:12.5px;color:var(--muted);margin-top:14px}
+.dwroot .ltoggle button{background:none;border:0;color:var(--blue);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;padding:0}
+.dwroot .lmsg:empty{display:none}
 .dwroot .lnote{font-size:12px;color:var(--faint);line-height:1.6;margin-top:16px}
 .dwroot .lok{margin-top:16px;font-size:13px;color:var(--green);background:rgba(95,224,160,.1);border:1px solid rgba(95,224,160,.2);padding:12px;border-radius:12px;line-height:1.5}
 .dwroot .lerr{margin-top:16px;font-size:13px;color:var(--red);background:rgba(255,107,122,.1);border:1px solid rgba(255,107,122,.2);padding:12px;border-radius:12px;line-height:1.5}
